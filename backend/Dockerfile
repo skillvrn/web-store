@@ -1,0 +1,11 @@
+# build
+FROM golang:latest as builder
+WORKDIR /app
+COPY . .
+RUN go mod download && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/api/
+
+# release
+FROM scratch
+COPY --from=builder /app/main .
+EXPOSE 8081
+CMD ["/main"]
