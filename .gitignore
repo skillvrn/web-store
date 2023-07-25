@@ -19,3 +19,20 @@ terraform.rc
 
 # S3 credentials
 config.s3.tfbackend
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+vendor/
+.idea/
+.vscode/
+.DS_Store
+
+# Kubernetes confis
+.kube/
+ca.pem
+kubeconfig
