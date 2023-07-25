@@ -9,6 +9,7 @@
 | Yandex Cloud CLI | 0.108.1 |
 | kubectl | v5.0.1 |
 | helm | v3.12.0 |
+| nginx | 1.25.1 |
 
 ## Создание инфраструктуры
 
