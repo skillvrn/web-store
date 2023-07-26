@@ -1,0 +1,124 @@
+cache:
+  key: ${CI_COMMIT_REF_NAME}-BACK-${VERSION}
+  paths:
+    - backend
+
+variables:
+  BACKEND_ENV_NAME: production-backend
+  SAST_EXCLUDED_ANALYZERS: "gosec"
+  BACK_ART_ADDRESS: ${NEXUS_REPO_URL_BACKEND}/${VERSION}/dumplings-store-backend-${VERSION}.tar.gz
+
+include:
+  remote: 'https://gitlab.com/gitlab-org/gitlab/-/raw/2851f4d5/lib/gitlab/ci/templates/Jobs/SAST.latest.gitlab-ci.yml'
+
+services:
+  - docker:20.10.12-dind-rootless
+
+stages:
+  - test
+  - build
+  - release
+  - notify
+
+test-backend:
+  stage: test
+  image: golang:latest
+  script:
+    - cd backend
+    - go test -v ./...
+
+sonarqube-backend-sast:
+  stage: test
+  image: sonarsource/sonar-scanner-cli:latest
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+    GIT_DEPTH: "0"
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+    - cd ${CI_PROJECT_DIR}/backend
+    - >
+      sonar-scanner
+      -Dsonar.projectKey=${SONAR_PROJECT_KEY_BACK}
+      -Dsonar.host.url=${SONAR_URL}
+      -Dsonar.login=${DUMPLINGS_STORE_14_BACK_TOKEN}
+      -Dsonar.projectVersion=${VERSION}
+  allow_failure: true
+
+build-atrifact:
+  stage: build
+  cache:
+    key: ${CI_COMMIT_REF_NAME}-BACK-${VERSION}
+    paths:
+      - backend
+  needs:
+    - test-backend
+    - sonarqube-backend-sast
+  before_script:
+    - apt update
+    - apt install golang -y
+  script:
+    - cd backend
+    - go mod download
+    - CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/api/
+
+build-docker-image:
+  stage: build
+  dependencies:
+    - build-atrifact
+  image: docker:20.10.12-dind-rootless
+  before_script:
+    - until docker info; do sleep 1; done
+    - docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PASS}
+  script:
+    - cd backend
+    - docker login -u ${CI_REGISTRY_USER} -p ${CI_REGISTRY_PASSWORD} ${CI_REGISTRY}
+    - >
+      docker build
+      --tag ${CI_REGISTRY_IMAGE}/dumplings-store-backend:${VERSION}
+      .
+    - docker push ${CI_REGISTRY_IMAGE}/dumplings-store-backend:${VERSION}
+
+release-docker-image:
+  variables:
+    GIT_STRATEGY: none
+  image: docker:20.10.12-dind-rootless
+  stage: release
+  needs:
+    - build-docker-image
+  before_script:
+    - until docker info; do sleep 1; done
+    - docker login -u ${CI_REGISTRY_USER} -p ${CI_REGISTRY_PASSWORD} ${CI_REGISTRY}
+  script:
+    - docker pull ${CI_REGISTRY_IMAGE}/dumplings-store-backend:${VERSION}
+    - docker tag ${CI_REGISTRY_IMAGE}/dumplings-store-backend:${VERSION} ${CI_REGISTRY_IMAGE}/dumplings-store-backend:latest
+    - docker push ${CI_REGISTRY_IMAGE}/dumplings-store-backend:latest
+
+upload-to-nexus:
+  stage: release
+  cache:
+    key: ${CI_COMMIT_REF_NAME}-BACK-${VERSION}
+    paths:
+      - backend
+  needs:
+    - build-atrifact
+  script:
+    - cd backend/
+    - tar czvf dumplings-store-backend-${VERSION}.tar.gz main
+    - >
+      curl -v -u "${NEXUS_REPO_USER}:${NEXUS_REPO_PASSWORD}" --upload-file dumplings-store-backend-${VERSION}.tar.gz ${BACK_ART_ADDRESS}
+
+telegram-notification-backend:
+  stage: notify
+  script:
+    - 'curl -X POST -H "Content-Type: application/json"
+      -d "{\"chat_id\": \"1236238897\", \"parse_mode\":\"markdown\",
+      \"text\": \"\uD83D\uDE80 Вышла новая версия backend пельменной - $VERSION.\n
+      \uD83D\uDD3D Скачать docker image можно в репозитории Gitlab CI.\n
+      Также артефакт находится в [Nexus](${BACK_ART_ADDRESS}).\"}"
+      https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage'
+  needs:
+    - upload-to-nexus
+    - release-docker-image

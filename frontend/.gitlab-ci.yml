@@ -1,0 +1,113 @@
+cache:
+  key: ${CI_COMMIT_REF_NAME}-FRONT-${VERSION}
+  paths:
+    - frontend/dist
+
+variables:
+  FRONT_ENV_NAME: production-frontend
+  SAST_EXCLUDED_ANALYZERS: "gosec"
+  FRONT_ART_ADDRESS: ${NEXUS_REPO_URL_FRONTEND}/${VERSION}/dumplings-store-${VERSION}.tar.gz
+
+include:
+  - remote: 'https://gitlab.com/gitlab-org/gitlab/-/raw/2851f4d5/lib/gitlab/ci/templates/Jobs/SAST.latest.gitlab-ci.yml'
+
+services:
+  - docker:20.10.12-dind-rootless
+
+stages:
+  - test
+  - build
+  - release
+  - notify
+
+sonarqube-frontend-sast:
+  stage: test
+  image: sonarsource/sonar-scanner-cli:latest
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+    GIT_DEPTH: "0"
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+    - cd ${CI_PROJECT_DIR}/frontend/
+    - >
+      sonar-scanner
+      -Dsonar.projectKey=${SONAR_PROJECT_KEY_FRONT}
+      -Dsonar.host.url=${SONAR_URL}
+      -Dsonar.login=${DUMPLINGS_STORE_14_FRONT_TOKEN}
+      -Dsonar.projectVersion=${VERSION}
+  allow_failure: true
+
+build-atrifact:
+  stage: build
+  cache:
+    key: ${CI_COMMIT_REF_NAME}-FRONT-${VERSION}
+    paths:
+      - frontend/dist
+  script:
+    - cd frontend
+    - npm install
+    - export NODE_ENV=production
+    - npm run build
+
+build-docker-image:
+  stage: build
+  dependencies:
+    - build-atrifact
+  image: docker:20.10.12-dind-rootless
+  before_script:
+    - until docker info; do sleep 1; done
+    - docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PASS}
+  script:
+    - cd frontend
+    - docker login -u ${CI_REGISTRY_USER} -p ${CI_REGISTRY_PASSWORD} ${CI_REGISTRY}
+    - >
+      docker build
+      --tag ${CI_REGISTRY_IMAGE}/dumplings-store-frontend:${VERSION}
+      .
+    - docker push ${CI_REGISTRY_IMAGE}/dumplings-store-frontend:${VERSION}
+
+release-docker-image:
+  variables:
+    GIT_STRATEGY: none
+  image: docker:20.10.12-dind-rootless
+  stage: release
+  needs:
+    - build-docker-image
+  before_script:
+    - until docker info; do sleep 1; done
+    - docker login -u ${CI_REGISTRY_USER} -p ${CI_REGISTRY_PASSWORD} ${CI_REGISTRY}
+  script:
+    - docker pull ${CI_REGISTRY_IMAGE}/dumplings-store-frontend:${VERSION}
+    - docker tag ${CI_REGISTRY_IMAGE}/dumplings-store-frontend:${VERSION} ${CI_REGISTRY_IMAGE}/dumplings-store-frontend:latest
+    - docker push ${CI_REGISTRY_IMAGE}/dumplings-store-frontend:latest
+
+upload-to-nexus:
+  stage: release
+  cache:
+    key: ${CI_COMMIT_REF_NAME}-FRONT-${VERSION}
+    paths:
+      - frontend/dist
+  needs:
+    - build-atrifact
+    - sonarqube-frontend-sast
+  script:
+    - cd frontend/
+    - tar czvf dumplings-store-${VERSION}.tar.gz dist
+    - >
+      curl -v -u "${NEXUS_REPO_USER}:${NEXUS_REPO_PASSWORD}" --upload-file dumplings-store-${VERSION}.tar.gz ${FRONT_ART_ADDRESS}
+
+telegram-notification:
+  stage: notify
+  script:
+    - 'curl -X POST -H "Content-Type: application/json"
+      -d "{\"chat_id\": \"1236238897\", \"parse_mode\":\"markdown\",
+      \"text\": \"\uD83D\uDE80 Вышла новая версия frontend пельменной - $VERSION.\n
+      \uD83D\uDD3D Скачать docker image можно в репозитории Gitlab CI.\n
+      Также артефакт находится в [Nexus](${FRONT_ART_ADDRESS}).\"}"
+      https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage'
+  needs:
+    - release-docker-image
+    - upload-to-nexus
