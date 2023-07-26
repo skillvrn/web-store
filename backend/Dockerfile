@@ -1,5 +1,5 @@
 # build
-FROM golang:latest as builder
+FROM golang:1.17.13-alpine3.16 as builder
 WORKDIR /app
 COPY . .
 RUN go mod download && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/api/
