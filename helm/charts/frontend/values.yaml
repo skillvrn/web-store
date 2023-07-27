@@ -1,0 +1,26 @@
+---
+frontend:
+  image: 
+    repository: "{{ .Values.global.registryUrl }}/dumplings-store-frontend"
+    tag: "{{ .Values.global.frontend_tag }}"
+  dockerconfigjson: "{{ .Values.global.dockerconfigjson }}"
+  replicas: 2
+  service:
+    port: 8080
+    backendPort: 8081
+    specType: ClusterIP
+  fqdn: dumplings-store.skillvrn.ru
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 400m
+  lables:
+    environment: production
+  livenessProbe:
+    initialDelaySeconds: 20
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 100

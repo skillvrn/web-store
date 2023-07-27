@@ -1,0 +1,26 @@
+---
+backend:
+  image:
+    repository: "{{ .Values.global.registryUrl }}/dumplings-store-backend"
+    tag: {{ .Values.global.backend_tag }}
+  dockerconfigjson: "{{ .Values.global.dockerconfigjson }}"
+  replicas: 2
+  maxUnavailable: 1
+  maxSurge: 20%
+  service:
+    port: 8081
+    specType: ClusterIP
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 0.1
+    limits:
+      memory: 256Mi
+      cpu: 0.2
+  lables:
+    environment: production
+  livenessProbe:
+    initialDelaySeconds: 20
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 100

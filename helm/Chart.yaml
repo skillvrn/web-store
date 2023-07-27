@@ -1,0 +1,14 @@
+---
+apiVersion: v2
+type: application
+name: dumplings-store
+description: Dumplings Store Helm Chart
+
+version: 1.0.0
+appVersion: "latest"
+
+dependencies:
+  - name: backend
+    version: "{{ .Values.global.backend_tag }}"
+  - name: frontend
+    version: "{{ .Values.global.frontend_tag }}"
