@@ -1,0 +1,11 @@
+---
+global:
+  namespace: dumplings-store
+  imagePullPolicy: Always
+  revisionHistoryLimit: 15
+  strategyType: RollingUpdate
+  partOf: dumplings-store
+  registryUrl: gitlab.praktikum-services.ru:5050/std-014-40/dumplings-store
+  dockerconfigjson: eyJhdXRoIjp7fX0=
+  backend_tag: "1.0.719654"
+  frontend_tag: "1.0.719654"

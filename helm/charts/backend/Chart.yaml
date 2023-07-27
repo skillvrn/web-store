@@ -1,0 +1,6 @@
+---
+apiVersion: v2
+appVersion: "{{ .Values.global.backend_tag }}"
+description: Backend chart for Kubernetes
+name: backend
+version: 1.0.0
