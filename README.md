@@ -1,6 +1,6 @@
 # Dumplings-Store - Пельменная №2
 
-![Dumplings-Store](images/167876466-2c530828-d658-4efe-9064-825626cc6db5.png "Damplings-store")
+![Dumplings-Store](images/app-screenshot.png "Damplings-store")
 
 ## Стек технологий
 
@@ -64,22 +64,185 @@
 ```
 .
 ├── backend
-│   ├── cmd
-│   ├── internal
-│   ├── .gitlab-ci.yml
-│   ├── Dockerfile
-│   ├── go.mod
-│   └── go.sum
+│   ├── cmd
+│   │   └── api
+│   │       ├── app
+│   │       │   ├── app.go
+│   │       │   ├── app_test.go
+│   │       │   ├── controller_auth.go
+│   │       │   ├── controller_create_order.go
+│   │       │   ├── controller_list_categories.go
+│   │       │   ├── controller_list_dumplings.go
+│   │       │   └── middleware.go
+│   │       ├── dependencies
+│   │       │   └── store.go
+│   │       ├── main.go
+│   │       └── router.go
+│   ├── .gitlab-ci.yml
+│   ├── Dockerfile
+│   ├── go.mod
+│   ├── go.sum
+│   └── internal
+│       ├── logger
+│       │   └── logger.go
+│       └── store
+│           └── dumplings
+│               ├── fake
+│               │   └── store.go
+│               ├── mock
+│               │   └── store.gen.go
+│               ├── models.go
+│               └── store.go
 ├── frontend
-│   ├── public
-│   ├── src
-│   ├── .gitlab-ci.yml
-│   ├── Dockerfile
+│   ├── .gitlab-ci.yml
+│   ├── babel.config.js
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── public
+│   │   ├── favicon.ico
+│   │   ├── index.html
+│   │   └── _redirects
+│   ├── src
+│   │   ├── App.vue
+│   │   ├── assets
+│   │   │   └── logo.png
+│   │   ├── components
+│   │   │   ├── cart
+│   │   │   │   ├── CartTableRow.vue
+│   │   │   │   └── CartTable.vue
+│   │   │   ├── catalog
+│   │   │   │   ├── CartCardRow.vue
+│   │   │   │   ├── CartCard.vue
+│   │   │   │   ├── Filters.vue
+│   │   │   │   ├── Pagination.vue
+│   │   │   │   ├── Products.vue
+│   │   │   │   ├── Product.vue
+│   │   │   │   └── Search.vue
+│   │   │   ├── misc
+│   │   │   │   ├── Alert.vue
+│   │   │   │   ├── Center.vue
+│   │   │   │   └── Spinner.vue
+│   │   │   ├── navbar
+│   │   │   │   ├── CartIcon.vue
+│   │   │   │   ├── index.ts
+│   │   │   │   └── Navbar.vue
+│   │   │   └── profile
+│   │   │       └── ChangePassword.vue
+│   │   ├── main.ts
+│   │   ├── models
+│   │   │   ├── category.model.ts
+│   │   │   ├── pagination.model.ts
+│   │   │   └── product.model.ts
+│   │   ├── router
+│   │   │   └── index.ts
+│   │   ├── services
+│   │   │   ├── api.service.ts
+│   │   │   └── resources
+│   │   │       ├── base.service.ts
+│   │   │       ├── categories.service.ts
+│   │   │       ├── non_paginated.service.ts
+│   │   │       ├── paginated.service.ts
+│   │   │       └── products.service.ts
+│   │   ├── shims-vue.d.ts
+│   │   ├── shims-vuex.d.ts
+│   │   ├── store
+│   │   │   └── index.ts
+│   │   ├── typings
+│   │   │   └── index.ts
+│   │   └── views
+│   │       ├── 404.vue
+│   │       ├── Cart.vue
+│   │       ├── Catalog.vue
+│   │       ├── Login.vue
+│   │       └── Profile.vue
+│   ├── tsconfig.json
+│   └── vue.config.js
+├── helm
+│   ├── charts
+│   │   ├── backend
+│   │   │   ├── Chart.yaml
+│   │   │   ├── templates
+│   │   │   │   ├── deployment.yaml
+│   │   │   │   ├── secrets.yaml
+│   │   │   │   └── service.yaml
+│   │   │   └── values.yaml
+│   │   └── frontend
+│   │       ├── Chart.yaml
+│   │       ├── templates
+│   │       │   ├── configmap.yaml
+│   │       │   ├── deployment.yaml
+│   │       │   ├── ingress.yaml
+│   │       │   ├── secrets.yaml
+│   │       │   └── service.yaml
+│   │       └── values.yaml
+│   ├── Chart.yaml
+│   └── values.yaml
 ├── images
-└── .gitlab-ci.yml
+│   ├── 167876466-2c530828-d658-4efe-9064-825626cc6db5.png
+│   ├── pipe-line-backend.png
+│   ├── pipe-line-frontend.png
+│   ├── sonar-back.png
+│   ├── sonar-front.png
+│   ├── telegram-notification-02.png
+│   └── telegram-notification-03.png
+├── k8s-additional
+│   ├── acme-issuer.yaml
+│   └── sa.yaml
+├── LICENSE
+├── README.md
+├── scripts
+│   ├── acme-issuer.yaml
+│   ├── get-kube-config.sh
+│   └── sa.yaml
+├── .gitignore
+├── .gitlab-ci.yml
+└── terraform
+    ├── main.tf
+    ├── modules
+    │   ├── grafana-disk
+    │   │   ├── main.tf
+    │   │   ├── variables.tf
+    │   │   └── versions.tf
+    │   ├── k8s-cluster
+    │   │   ├── main.tf
+    │   │   ├── outputs.tf
+    │   │   ├── variables.tf
+    │   │   └── versions.tf
+    │   ├── kms-key
+    │   │   ├── main.tf
+    │   │   ├── outputs.tf
+    │   │   ├── variables.tf
+    │   │   └── versions.tf
+    │   ├── node-group
+    │   │   ├── main.tf
+    │   │   ├── variables.tf
+    │   │   └── versions.tf
+    │   ├── security-group
+    │   │   ├── main.tf
+    │   │   ├── outputs.tf
+    │   │   ├── variables.tf
+    │   │   └── versions.tf
+    │   ├── service-account
+    │   │   ├── main.tf
+    │   │   ├── outputs.tf
+    │   │   ├── variables.tf
+    │   │   └── versions.tf
+    │   ├── static-ip
+    │   │   ├── main.tf
+    │   │   ├── variables.tf
+    │   │   └── versions.tf
+    │   └── yc-network
+    │       ├── main.tf
+    │       ├── outputs.tf
+    │       ├── variables.tf
+    │       └── versions.tf
+    ├── provider.tf
+    ├── variables.tf
+    └── versions.tf
 ```
 
-## Описание каталогов и файлов в репозитории
+## Описание основных каталогов и файлов в репозитории
 
 - `backend` - каталог с исходниками backend'а приложения и CI/CD конфигурацией
 - `backend/cmd` и `backend/src` - исходники приложения на Go
@@ -92,6 +255,22 @@
 - `frontend/Dockerfile` - конфигурация для сборки Docker image frontend'а
 - `images` - для медиафайлов, использованных в README.md
 - `.gitlab-ci.yml` - конфигурация даунстрим пайплайна
+- `helm` - Helm-чарты для деплоймента и обновления приложения
+- `scripts` - дополнительные скрипты
+- `k8s-additional/acme-issuer.yaml` - манифест для запуска Cert-manager в K8s кластере
+- `k8s-additional/sa.yaml` - манифест для создания в кластере ServiceAccount для доступа к кластеру из CI/CD
+- `scripts/get-kube-config.sh` - скрипт, который генерирует конфигурационный файл для подключения и авторизации в K8s кластере
+- `terraform` - спецификация для создания инфраструктуры в облаке
+- `terraform/main.tf` - основной файл спецификации terraform'а
+- `terraform/modules` - каталог с модулями тераформа
+- `terraform/modules/grafana-disk` - создание в облаке диска для подключения к нему в Pod'е Grafana
+- `terraform/modules/k8s-cluster` - создание K8s кластера
+- `terraform/modules/kms-key` - создание KMS ключа шифрования
+- `terraform/modules/node-group` - создание инстансов для кластера
+- `terraform/modules/security-group` - определение сетевых правил для назначения Nodes-group
+- `terraform/modules/service-account` - создание сервисного аккаунта для дальнешего управления объектами
+- `terraform/modules/static-ip` - создание статического IP-адреса для Network Load Balancer
+- `terraform/modules/yc-network` - создание сети и подсетей для K8s кластера
 
 ## Переменные CI/CD
 
