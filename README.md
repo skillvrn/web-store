@@ -100,7 +100,7 @@
 | Элемент | Комментарий |
 |--------------|-----------|
 | `DOCKERHUB_PASS` | Пароль к учетной записи Docker Hub для скачивания образов (чтобы не было ошибок по лимитам на раннерах) |
-| `DOCKERHUB_USER` | Учетная запись для личного Docker Hub |
+| `DOCKERHUB_USER` | Учетная запись для Docker Hub |
 | `DUMPLINGS_STORE_14_BACK_TOKEN` | Token проекта в SonarQube для тестирования backend'а |
 | `DUMPLINGS_STORE_14_FRONT_TOKEN` | Token проекта в SonarQube для тестирования frontend'а |
 | `NEXUS_REPO_PASSWORD` | Пароль учетной записи репозитория Nexus |
@@ -116,7 +116,7 @@
 
 | Элемент | Значение | Комментарий |
 |--------------|-----------|
-| `VERSION` | Глобальная переменная. Версия приложения, генерируется динамически |
+| `VERSION` | Глобальная переменная. Версия приложения, генерируется динамически из ID пайплайна |
 | `BACKEND_ENV_NAME` | Название окружения для Rollback backend'а |
 | `SAST_EXCLUDED_ANALYZERS` | Исключение из анализатора SAST gosec |
 | `APP_NAME` | Название приложения |
@@ -132,20 +132,20 @@
 
 - Тестирование
 - Сборка
-- Релиз
+- Релиз (доставка)
 - Уведомление
 
 ### Конвейер Backend'а
 
 #### Тестирование
 
-**Static application security testing**
+**Static application security testing (SAST)**
 
 Тестируем приложение, анализируя исходный код программного обеспечения для выявления источников уязвимостей. Производится средствами Gitlab CI.
 
 **Unit**
 
-Запускаем написанные программистами тесты
+Запускаем написанные разработчиками тесты
 
 **SonarQube**
 
@@ -194,7 +194,7 @@
 
 #### Тестирование
 
-**Static application security testing**
+**Static application security testing (SAST)**
 
 Тестируем приложение, анализируя исходный код программного обеспечения для выявления источников уязвимостей. Производится средствами Gitlab CI.
 
@@ -245,7 +245,7 @@
 
 Приложение версионируется по [SemVer](https://semver.org/)
 
-При внесении изменений, минорная версия генерируется автоматически. Если необходимо изменить мажорную версию или ветку, то это необходимо сделать вручную в главном конфигурационном файле пайплайна.
+При мелких правках версия генерируется автоматически. Минорные и мажорные версии вносятся в ручную.
 
 ## Модель ветвления
 
@@ -253,7 +253,7 @@
 
 ## Дополнительно
 
-Медиафайлы приложения перенесены в S3. Ссылки в исходниках заменены на новый ресурс. Создание S3-хранилища описано в инфраструктурном репозитории.
+Медиафайлы приложения перенесены в S3. Ссылки в исходниках заменены на новый ресурс. Создание S3-хранилища описано ниже.
 
 # Инфраструктура
 
@@ -275,8 +275,8 @@
 - [Создать каталог](https://cloud.yandex.ru/docs/resource-manager/operations/folder/create)
 - [Создать сервисный аккаунт с правами `Editor` для управления ресурсами](https://cloud.yandex.ru/docs/iam/quickstart-sa#create-sa)
 - [Создать статический ключ для сервисного аккаунта](https://cloud.yandex.ru/docs/iam/concepts/authorization/key)
-- Создать Object Storage S3 бакет для хранения состояния terraform
-- Создать Object Storage S3 бакет для хранения медиа файлов приложения
+- [Создать Object Storage S3 бакет для хранения состояния terraform](https://cloud.yandex.ru/docs/tutorials/infrastructure-management/terraform-state-storage)
+- [Создать Object Storage S3 бакет для хранения медиа файлов приложения](https://cloud.yandex.ru/docs/storage/quickstart)
 
 ### Получение доступа к управлению через YC CLI
 
@@ -284,7 +284,7 @@
 - [По сгенерированному статическому ключу настроить доступ к своему каталогу в облаке](https://cloud.yandex.ru/docs/cli/quickstart)
 - [Установить terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
 
-Для безопасности, в работе обычно использовался IAM_Token, который необходимо периодически обновлять и записывать в `terraform/terraform.tfvars` в формате:
+Для безопасности, в работе использовался IAM_Token, который необходимо периодически обновлять и записывать в `terraform/terraform.tfvars` в формате:
 
 `iam_token="..."`
 
@@ -374,7 +374,7 @@ terraform apply -auto-approve
 После создания каждого объекта терраформ делает вывод необходимых данных для передачи в смежные модули. Все зависимости описаны в корневой спецификации main.tf.
 Примерное время выполнения - 10 минут.
 
-### Создание доступа в кластер для непрерывной интеграции
+### Создание доступа в кластер для CI/CD
 
 - Вернитесь в корень репозитория
 
@@ -398,7 +398,7 @@ yc managed-kubernetes cluster get-credentials <cluster_id> --external --kubeconf
 - Создайте в кластере 3 объекта (ClusterRoleBinding, Secret и ServiceAccount) при помощи подготовленного манифеста:
 
 ```
-kubectl create -f scripts/sa.yaml
+kubectl create -f k8s-additional/sa.yaml
 ```
 
 - Сгенерируйте сертификат и конфигурационный файл для дальнейшего его использования в CI/CD
@@ -441,7 +441,7 @@ rm ./ca.pem
 | `web-store-fqdn.ru.` | `A` | `Static_IP` |
 | `prometheus-fqdn.ru.` | `A` | `Static_IP` |
 | `alertmanager-fqdn.ru.` | `A` | `Static_IP` |
-| `grafana.skillvrn.ru.` | `A` | `Static_IP` |
+| `grafana-fqdn.ru.` | `A` | `Static_IP` |
 
 ## Установка сервисов
 
@@ -465,7 +465,6 @@ kubectl config set-context --current --namespace=dumplings-store
 ```
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 helm repo add jetstack https://charts.jetstack.io
-helm repo add grafana https://grafana.github.io/helm-charts
 helm repo update
 ```
 
@@ -491,19 +490,19 @@ helm upgrade --install cert-manager jetstack/cert-manager --namespace dumplings-
 
 *Примечание: --set installCRDs=true говорит, что нужно автоматически установить дополнительные типы ресурсов в кластер, иначе придётся это делать руками*
 
-- В кластере объявите ресурс центра сертификации. Для этого используйте подготовленный манифест `scripts/acme-issuer.yaml`. Обратите внимание, что внутри есть важные переменные, которые можно изменить:
+- В кластере объявите ресурс центра сертификации. Для этого используйте подготовленный манифест `k8s-additional/acme-issuer.yaml`. Обратите внимание, что внутри есть важные переменные, которые можно изменить:
 
 | Элемент | Значение | 
 |--------------|-----------|
 | `name` | `letsencrypt` |
-| `namespace` | `my-namespace` |
+| `namespace` | `dumplings-store` |
 | `spec.acme.server` | `https://acme-v02.api.letsencrypt.org/directory` |
 | `spec.acme.email` | `someaddress@domain.ru` |
 
 *Примечание: spec.acme.server можно изменить на тестовый ресурс https://acme-staging-v02.api.letsencrypt.org/directory, если нам нужно произвести тестирования наших сервисов. Почитать про ограничения можно [тут](https://support.cloudways.com/en/articles/5129566-let-s-encrypt-ssl-certificates-limitations)*
 
 ```
-kubectl apply -f scripts/acme-issuer.yaml
+kubectl apply -f k8s-additional/acme-issuer.yaml
 ```
 
 ## Удаление инфраструктуры
