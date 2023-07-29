@@ -290,10 +290,10 @@
 - `images` - для медиафайлов, использованных в README.md
 - `k8s-additional/acme-issuer.yaml` - манифест для запуска Cert-manager в K8s кластере
 - `k8s-additional/sa.yaml` - манифест для создания в кластере ServiceAccount для доступа к кластеру из CI/CD
-- `monitoring` - Helm-диаграммы для запуска сервисов мониторинга
-- `monitoring/alertmanager` - Helm-диаграммы для запуска Alertmanager в K8s кластере
-- `monitoring/grafana` - Helm-диаграммы для запуска Grafana в K8s кластере
-- `monitoring/prometheus` - Helm-диаграммы для запуска Prometheus в K8s кластере
+- `monitoring` - Helm-чарты для запуска сервисов мониторинга
+- `monitoring/alertmanager` - Helm-чарты для запуска Alertmanager в K8s кластере
+- `monitoring/grafana` - Helm-чарты для запуска Grafana в K8s кластере
+- `monitoring/prometheus` - Helm-чарты для запуска Prometheus в K8s кластере
 - `scripts` - дополнительные скрипты
 - `scripts/get-kube-config.sh` - скрипт, который генерирует конфигурационный файл для подключения и авторизации в K8s кластере
 - `terraform` - спецификация для создания инфраструктуры в облаке
@@ -807,7 +807,7 @@ helm upgrade --atomic --install --set loki.persistence.enabled=true,loki.persist
 
 ### Grafana
 
-Интегрируем при помощи Helm диаграмм.
+Интегрируем при помощи Helm чарта.
 
 Переменные, которые можно изменить:
 
