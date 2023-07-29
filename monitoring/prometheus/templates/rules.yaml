@@ -1,0 +1,16 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ .Chart.Name }}-rules"
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Chart.Name }}
+data:
+  {{- $files := .Files }}
+  {{- range $key, $value := .Files }}
+  {{- if hasPrefix "rules/" $key }}
+  {{ $key | trimPrefix "rules/" }}: {{ $files.Get $key | quote }}
+  {{- end }}
+  {{- end }}
+  

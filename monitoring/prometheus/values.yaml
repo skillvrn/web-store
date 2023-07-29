@@ -1,0 +1,10 @@
+---
+folderId: b1gs8bb343i69r2ftqng
+bearerToken: token
+namespace: dumplings-store
+port: 9090
+selectorType: ClusterIP
+fqdn: prometheus.skillvrn.ru
+replicasCount: 1
+resourcesCPU: 1
+resourcesMem: 1Gi

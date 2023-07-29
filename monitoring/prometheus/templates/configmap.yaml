@@ -1,0 +1,81 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-conf
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Chart.Name }}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 10s
+      scrape_timeout: 10s
+    rule_files:
+       - "/config/*"
+    alerting:
+      alertmanagers:
+      - scheme: http
+        static_configs:
+        - targets:
+          - "alertmanager:9093"
+    scrape_configs:
+    - job_name: backend-exporter
+      metrics_path: '/metrics'
+      static_configs:
+        - targets: ['backend:8081']
+    - job_name: yandex-service-compute
+      metrics_path: '/monitoring/v2/prometheusMetrics'
+      scheme: 'https'
+      params:
+        folderId:
+        - {{ .Values.folderId }}
+        service:
+        - compute
+      bearer_token: {{ .Values.bearerToken }}
+      static_configs:
+      - targets: ['monitoring.api.cloud.yandex.net']
+        labels:
+          folderId: {{ .Values.folderId }}
+
+    - job_name: yandex-service-managed-kubernetes
+      metrics_path: '/monitoring/v2/prometheusMetrics'
+      scheme: 'https'
+      params:
+        folderId:
+        - {{ .Values.folderId }}
+        service:
+        - managed-kubernetes
+      bearer_token: {{ .Values.bearerToken }}
+      static_configs:
+      - targets: ['monitoring.api.cloud.yandex.net']
+        labels:
+          folderId: {{ .Values.folderId }}
+    
+    - job_name: yandex-service-network-load-balancer
+      metrics_path: '/monitoring/v2/prometheusMetrics'
+      scheme: 'https'
+      params:
+        folderId:
+        - {{ .Values.folderId }}
+        service:
+        - network-load-balancer
+      bearer_token: {{ .Values.bearerToken }}
+      static_configs:
+      - targets: ['monitoring.api.cloud.yandex.net']
+        labels:
+          folderId: {{ .Values.folderId }}
+    
+    - job_name: yandex-service-storage
+      metrics_path: '/monitoring/v2/prometheusMetrics'
+      scheme: 'https'
+      params:
+        folderId:
+        - {{ .Values.folderId }}
+        service:
+        - storage
+      bearer_token: {{ .Values.bearerToken }}
+      static_configs:
+      - targets: ['monitoring.api.cloud.yandex.net']
+        labels:
+          folderId: {{ .Values.folderId }}
