@@ -1,0 +1,13 @@
+---
+namespace: dumplings-store
+port: 3000
+selectorType: ClusterIP
+fqdn: grafana.skillvrn.ru
+resourceStorage: 1Gi
+csiDriver: disk-csi-driver.mks.ycloud.io
+csiFsType: ext4
+grafanaDiskId: fhmfa9oc09dohprq02ap
+storageClassName: yc-network-hdd
+imagePullPolicy: IfNotPresent
+resourcesCPU: 250m
+resourcesMem: 750Mi
