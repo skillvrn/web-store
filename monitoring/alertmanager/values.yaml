@@ -1,0 +1,9 @@
+---
+bot_token: token
+chat_id: 1236238897
+namespace: dumplings-store
+port: 9093
+selectorType: ClusterIP
+fqdn: alertmanager.skillvrn.ru
+resourcesCPU: 0.5
+resourcesMem: 256Mi

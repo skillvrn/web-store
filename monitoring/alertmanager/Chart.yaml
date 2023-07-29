@@ -1,0 +1,7 @@
+---
+apiVersion: v2
+name: alertmanager
+description: for student
+type: application
+version: 1.0.0
+appVersion: v0.25

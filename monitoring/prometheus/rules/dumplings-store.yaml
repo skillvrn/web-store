@@ -1,0 +1,33 @@
+---
+groups:
+  - name: Dumplings store rules
+    rules:
+    - alert: InstanceDown
+      expr: up{app="backend"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        project: "dumplings_store"
+        component: "Backend"
+      annotations:
+        summary: Backend is down
+        description: The backend instance of application Dumplings-Store is down!
+    - alert: ErrorWebServer
+      expr: http_server_requests_seconds_count{status="500"} != 0
+      for: 1m
+      labels:
+        severity: critical
+        project: "dumplings_store"
+        component: "Backend"
+      annotations:
+        summary: Error 500
+        description: The web-server of backend returned error 500!
+    - alert: HighSuccessDelay
+      expr: histogram_quantile(0.95,rate(http_server_requests_seconds_bucket{method="POST",uri="/api/orders"}[5m]))*1000 > 100
+      labels:
+        severity: critical
+        project: "dumplings_store"
+        component: "Backend"
+      annotations:
+        summary: High delay of POST request
+        description: The backend responded to the POST request for more than 100 ms
