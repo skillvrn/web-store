@@ -28,7 +28,7 @@
 - **Мониторинг**: Prometheus, Alertmanager, Loki, Grafana
 - **Веб-сервер**: Ingress-controller, Network Load Balancer, Cert-manager, DNS, Nginx
 - **Деплой**: Helm
-- **Работа с кодом**: Git, IaC
+- **Работа с кодом**: Git, Gitlab CI, IaC
 
 ## Зависимости
 
@@ -63,7 +63,9 @@
 
 ```
 .
+├── .gitlab-ci.yml
 ├── backend
+│   ├── .gitlab-ci.yml
 │   ├── cmd
 │   │   └── api
 │   │       ├── app
@@ -78,7 +80,6 @@
 │   │       │   └── store.go
 │   │       ├── main.go
 │   │       └── router.go
-│   ├── .gitlab-ci.yml
 │   ├── Dockerfile
 │   ├── go.mod
 │   ├── go.sum
@@ -179,7 +180,7 @@
 │   ├── Chart.yaml
 │   └── values.yaml
 ├── images
-│   ├── 167876466-2c530828-d658-4efe-9064-825626cc6db5.png
+│   ├── app-screenshot.png
 │   ├── pipe-line-backend.png
 │   ├── pipe-line-frontend.png
 │   ├── sonar-back.png
@@ -190,13 +191,44 @@
 │   ├── acme-issuer.yaml
 │   └── sa.yaml
 ├── LICENSE
+├── monitoring
+│   ├── alertmanager
+│   │   ├── Chart.yaml
+│   │   ├── templates
+│   │   │   ├── configmap.yaml
+│   │   │   ├── deployment.yaml
+│   │   │   ├── _helpers.tpl
+│   │   │   ├── ingress.yaml
+│   │   │   └── services.yaml
+│   │   └── values.yaml
+│   ├── grafana
+│   │   ├── Chart.yaml
+│   │   ├── dashboards
+│   │   │   └── Kubernetes___Compute_Resources___Pod.json
+│   │   ├── templates
+│   │   │   ├── deployment.yaml
+│   │   │   ├── _helpers.tpl
+│   │   │   ├── ingress.yaml
+│   │   │   ├── pvc.yaml
+│   │   │   ├── pv.yaml
+│   │   │   └── services.yaml
+│   │   └── values.yaml
+│   └── prometheus
+│       ├── Chart.yaml
+│       ├── rules
+│       │   └── dumplings-store.yaml
+│       ├── templates
+│       │   ├── configmap.yaml
+│       │   ├── deployment.yaml
+│       │   ├── ingress.yaml
+│       │   ├── rules.yaml
+│       │   └── services.yaml
+│       └── values.yaml
 ├── README.md
 ├── scripts
 │   ├── acme-issuer.yaml
 │   ├── get-kube-config.sh
 │   └── sa.yaml
-├── .gitignore
-├── .gitlab-ci.yml
 └── terraform
     ├── main.tf
     ├── modules
@@ -244,21 +276,25 @@
 
 ## Описание основных каталогов и файлов в репозитории
 
+- `.gitlab-ci.yml` - конфигурация пайплайна
 - `backend` - каталог с исходниками backend'а приложения и CI/CD конфигурацией
-- `backend/cmd` и `backend/src` - исходники приложения на Go
 - `backend/.gitlab-ci.yml` - конфигурация дочернего пайплайна для backend'а
+- `backend/cmd` и `backend/src` - исходники приложения на Go
 - `backend/Dockerfile` - конфигурация для сборки Docker image backend'а
 - `backend/go.mod` и `backend/go.sum` - исходники приложения на Go
 - `frontend` - каталог с исходниками frontend'а приложения и CI/CD конфигурацией
-- `frontend/public` и `frontend/src` - исходники приложения на HTML, Vue, JS и TS
 - `frontend/.gitlab-ci.yml` - конфигурация дочернего пайплайна для frontend'а
+- `frontend/public` и `frontend/src` - исходники приложения на HTML, Vue, JS и TS
 - `frontend/Dockerfile` - конфигурация для сборки Docker image frontend'а
-- `images` - для медиафайлов, использованных в README.md
-- `.gitlab-ci.yml` - конфигурация даунстрим пайплайна
 - `helm` - Helm-чарты для деплоймента и обновления приложения
-- `scripts` - дополнительные скрипты
+- `images` - для медиафайлов, использованных в README.md
 - `k8s-additional/acme-issuer.yaml` - манифест для запуска Cert-manager в K8s кластере
 - `k8s-additional/sa.yaml` - манифест для создания в кластере ServiceAccount для доступа к кластеру из CI/CD
+- `monitoring` - Helm-диаграммы для запуска сервисов мониторинга
+- `monitoring/alertmanager` - Helm-диаграммы для запуска Alertmanager в K8s кластере
+- `monitoring/grafana` - Helm-диаграммы для запуска Grafana в K8s кластере
+- `monitoring/prometheus` - Helm-диаграммы для запуска Prometheus в K8s кластере
+- `scripts` - дополнительные скрипты
 - `scripts/get-kube-config.sh` - скрипт, который генерирует конфигурационный файл для подключения и авторизации в K8s кластере
 - `terraform` - спецификация для создания инфраструктуры в облаке
 - `terraform/main.tf` - основной файл спецификации terraform'а
@@ -445,6 +481,7 @@
 | Yandex Cloud CLI | 0.108.1 |
 | kubectl | v5.0.1 |
 | helm | v3.12.0 |
+| cert-manager | v1.12.0 |
 
 ## Создание инфраструктуры
 
@@ -516,10 +553,16 @@ cd web-store/terraform
 - Создайте новый token для доступа к облаку тераформом
 
 ```
-yc iam create-token
+IAM_TOKEN=`yc iam create-token`
 ```
 
-- Запишите полученный ключ в переменную (описано выше)
+- Запишите полученный ключ в переменную для доступа terraform к облаку:
+
+```
+ touch ./terraform.tfvars
+ echo $IAM_TOKEN > ./terraform.tfvars
+```
+
 - Прописать доступ к S3 для хранения состояния teraform
 
 В каталоге `terraform/` необходимо создать файл `config.s3.tfbackend` и в него записать данные для доступа к бакету тераформом в формате:
@@ -538,9 +581,9 @@ terraform apply -auto-approve
 
 При этом будут созданы следующие объекты:
 
-1. Статический IP-адрес (в спецификации указано, что данный объект удалять нельзя - сделано, чтобы не править DNS-записи)
+1. Статический IP-адрес (в спецификации указано, что данный объект удалять нельзя - сделано, чтобы не править DNS-записи). Если запускаем не впервые, то новый IP создан не будет.
 2. Сеть и подсети для master и worker Nodes
-3. Диск на основе сохраненного образа с готовым конфигом и дашбордами для монтирования его к поду Grafana
+3. Диск на основе сохраненного образа с готовым конфигом и дашбордами для монтирования его к поду Grafana через Persistent Volume
 4. Сервисный аккаунт с необходимыми правами для работы с кластером
 5. Политику сетевых правил, разрешающей подключение к сервисам из интернета и наоборот
 6. Ключ шифрования Yandex Key Management Service для шифрования важной информации
@@ -580,13 +623,15 @@ yc managed-kubernetes cluster get-credentials <cluster_id> --external --kubeconf
 kubectl create -f k8s-additional/sa.yaml
 ```
 
-- Сгенерируйте сертификат и конфигурационный файл для дальнейшего его использования в CI/CD
+Это необходимо для взаимодействия с API Kubernetes внутри кластера Kubernetes.
+
+- Сгенерируйте сертификат и конфигурационный файл для их дальнейшего использования в CI/CD при помощи подготовленного скрипта.
+
+*Примечание: в скрипте используется утилита [jq](https://jqlang.github.io/jq/) для выделения нужной информации из json, поэтому проверьте, что она установлена*
 
 ```
 ./scripts/get-kube-config.sh
 ```
-
-*Примечание: в скрипте используется утилита [jq](https://jqlang.github.io/jq/) для выделения нужной информации из json, поэтому проверьте, что она установлена*
 
 В результате буду созданы 2 файла `kubeconfig` и `ca.pem`.
 
@@ -596,15 +641,15 @@ kubectl create -f k8s-additional/sa.yaml
 cat ./kubeconfig | base64
 ```
 
-Данный вывод сохранить в переменную `KUBE_CONFIG`
+Данный вывод сохраните в переменную `KUBE_CONFIG` в проекте Gitbal CI.
 
 ```
 cat ./ca.pem | base64
 ```
 
-Данный вывод сохранить в переменную `CLUSTER_CERT`
+Данный вывод сохраните в переменную `CLUSTER_CERT` в проекте Gitbal CI.
 
-- Удалить локальные файлы:
+- Удалите локальные файлы для исключения утечки секретной информации:
 
 ```
 rm ./kubeconfig
@@ -613,7 +658,7 @@ rm ./ca.pem
 
 ### DNS
 
-Прописать NS-записи:
+Прописать NS-записи (примеры):
 
 | Имя | Тип | Значение |
 |--------------|-----------|-----------|
@@ -683,6 +728,169 @@ helm upgrade --install cert-manager jetstack/cert-manager --namespace dumplings-
 ```
 kubectl apply -f k8s-additional/acme-issuer.yaml
 ```
+
+## Мониторинг
+
+### Prometheus
+
+В Helm-чартах есть интеграция настройки получения метрик из Яндекс Облака по запущенным сервисам и созданным объектам. Для того, чтобы Prometheus собирал метрики, ему необходим доступ. Для это нужно создать отдельный сервисный аккаунт и назначить на него роль `monitoring.viewer`. После этого [создать ключ](https://cloud.yandex.ru/docs/iam/operations/api-key/create), который будет использоваться в качестве `bearer_token`.
+
+Также в чартах есть переменные, которые можно изменить:
+
+| Элемент | Значение | 
+|--------------|-----------|
+| `folderId` | `b1gs8bb343i69r2ftqng` |
+| `bearerToken` | `token` |
+| `namespace` | `dumplings-store` |
+| `port` | `9090` |
+| `selectorType` | `ClusterIP` |
+| `fqdn` | `prometheus.skillvrn.ru` |
+| `replicasCount` | `1` |
+| `resourcesCPU` | `1` |
+| `resourcesMem` | `1Gi` |
+
+- Устанавливаем Prometheus:
+
+```
+export BEARER_TOKEN=<token>
+helm upgrade --atomic --install --set bearerToken=$BEARER_TOKEN prometheus monitoring/prometheus
+```
+
+Система собирает следующие метрики:
+
+1. Backend приложение (Endpoint: `backend:8081/metrics`)
+2. Создаваемые службами Яндекс.Облака в каталоге через `monitoring.api.cloud.yandex.net`
+3. Генерируемые службой Managed Service for Kubernetes через `monitoring.api.cloud.yandex.net`
+
+### Alertmanager
+
+Интегрируем при помощи Helm-чартов.
+
+Для алертов используется заранее созданный telegram бот.
+
+Переменные, которые можно изменить:
+
+| Элемент | Значение | 
+|--------------|-----------|
+| `bot_token` | `token` |
+| `chat_id` | `1236238897` |
+| `namespace` | `dumplings-store` |
+| `port` | `9093` |
+| `selectorType` | `ClusterIP` |
+| `fqdn` | `alertmanager.skillvrn.ru` |
+| `resourcesCPU` | `0.5` |
+| `resourcesMem` | `256Mi` |
+
+- Установка:
+
+```
+export BOT_TOKEN=<bot_token>
+helm upgrade --atomic --install --set bot_token=$BOT_TOKEN alertmanager monitoring/alertmanager
+```
+
+*Где `bot_token` - указание секрета для доступа к API Телеграм бота*
+
+### Loki
+
+Утилита для сбора логов.
+Мы собираем логи из k8s кластера. Поэтому используем готовые Helm-чарты для этих нужд.
+
+- Установка:
+
+```
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+helm upgrade --atomic --install --set loki.persistence.enabled=true,loki.persistence.storageClassName=yc-network-hdd loki grafana/loki-stack
+```
+
+При создании сервиса в кластере также в облаке будет создан диск, а в кластере Persistent Volume (PV) и Persistent Volume Claim (PVC) для хранения полученных данных. PV подключается к диску автоматически. Но нужно учитывать, что <u>при удалении ресурса диск автоматически не удаляется</u>. Это нужно делать вручную!
+
+### Grafana
+
+Интегрируем при помощи Helm диаграмм.
+
+Переменные, которые можно изменить:
+
+| Элемент | Значение |
+|--------------|-----------|
+| `namespace` | `dumplings-store` |
+| `port` | `3000` |
+| `selectorType` | `ClusterIP` |
+| `fqdn` | `grafana.skillvrn.ru` |
+| `resourceStorage` | `1Gi` |
+| `csiDriver` | `disk-csi-driver.mks.ycloud.io` |
+| `csiFsType` | `ext4` |
+| `grafanaDiskId` | `fhm886i2faug718ddf3g` |
+| `storageClassName` | `yc-network-hdd` |
+| `imagePullPolicy` | `IfNotPresent` |
+| `resourcesCPU` | `250m` |
+| `resourcesMem` | `750Mi` |
+
+*Внимание! Размер диска (параметр resourceStorage должен быть не больше, чем размер диска, создаваемого тераформом), а тип диска должен соответствовать.*
+
+*Примечание: в случае пересоздания инфраструктуры необходимо заменить идентификатор диска (`grafanaDiskId`), который был создан тераформом!*
+
+- Установка:
+
+```
+helm upgrade --atomic --install grafana monitoring/grafana
+```
+
+При создании сервиса в K8s кластере будут созданы Persistent Volume (PV) и Persistent Volume Claim (PVC) для хранения полученных данных. PV создается с подключением к существующему диску. За счет этого мы не теряем конфигурацию Графаны, а также доступы и дашборды.
+
+В графане представлены 3 дашборда:
+
+- Business Dashboard
+
+![Business Dashboard](images/business-dashboard.png "Business Dashboard")
+
+Показывается:
+
+1. Топ просмотров товаров
+2. Количество HTTP-запросов за 5 минут
+3. Количество заказов за 5 минут
+
+- Application Dashboard
+
+![Application Dashboard](images/application-dashboard.png "Application Dashboard")
+
+Показывается:
+
+1. Время ответа страницы /categories/
+2. Время ответа страницы /products/
+3. Логи приложения с back- и frontend'а
+
+- Infrastructure Dashboard
+
+![Infrastructure Dashboard](images/infra-dashboard.png "Infrastructure Dashboard")
+
+Показывается:
+
+1. Загрузка CPU Master Node K8s Cluster'а
+2. Загрузка оперативной памяти Master Node K8s Cluster'а
+3. Загрузка оперативной памяти Worker Nodes K8s Cluster'а
+4. Занятое место на жестких дисках Worker Nodes K8s Cluster'а
+5. Загрузка сетевого интерфейса на нодах (входящий и исходящий трафик)
+
+### Правила изменений и версионирования
+
+1. Все изменения необходимо делать не в ветке `main` (применяется модель ветвления Feature Branch Workflow).
+2. После завершения работы с изменениями необходимо делать merge request и проводить review кода. После подтверждения всеми службами производить слияние и применять изменения в инфраструктуру.
+3. Версионирование осуществляется по [SemVer](https://semver.org/) и применяется для Helm-чартов.
+4. При изменениях необходимо менять версии. Ниже представлена общая таблица всех объектов, где применяется версия:
+
+| Объект | Файл | Название переменной |
+|--------------|-----------|-----------|
+| Версия шаблона Helm Chart Backend | `dumplings-store-charts/charts/backend/Chart.yaml` | `version` |
+| Версия backend для отображения в деплойменте Helm (helm list) | `dumplings-store-charts/charts/backend/Chart.yaml` | `appVersion` |
+| Версия backend для скачивания нужного образа из репозитория | `dumplings-store-charts/charts/backend/values.yaml` | `backend.image.tag` |
+| Версия шаблона Helm Chart frontend | `dumplings-store-charts/charts/frontend/Chart.yaml` | `version` |
+| Версия frontend для отображения в деплойменте Helm (helm list) | `dumplings-store-charts/charts/frontend/Chart.yaml` | `appVersion` |
+| Версия backend для скачивания нужного образа из репозитория | `dumplings-store-charts/charts/frontend/values.yaml` | `frontend.image.tag` |
+| Глобальная версия Helm Chart приложения | `dumplings-store-charts/charts/Chart.yaml` | `version` |
+| Версия Helm Chart Prometheus | `monitoring/prometheus/Chart.yaml` | `version` |
+| Версия Helm Chart Alertmanager | `monitoring/alertmanager/Chart.yaml` | `version` |
+| Версия Helm Chart Grafana | `monitoring/grafana/Chart.yaml` | `version` |
 
 ## Удаление инфраструктуры
 
