@@ -7,7 +7,6 @@ variables:
 
 stages:
   - module-pipelines
-  - deploy
 
 frontend:
   stage: module-pipelines
@@ -28,3 +27,15 @@ backend:
   only:
     changes:
       - backend/**/*
+
+deploy:
+  stage: module-pipelines
+  trigger:
+    include:
+      - "/helm/.gitlab-ci.yml"
+    strategy: depend
+  only:
+    changes:
+      - frontend/**/*
+      - backend/**/*
+      - helm/**/*

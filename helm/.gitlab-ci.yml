@@ -1,0 +1,53 @@
+variables:
+  ENV_NAME: production
+  APPLICATION: dumplings-store
+  CLUSTER_NAMESPACE: dumplings-store
+
+services:
+  - docker:20.10.12-dind-rootless
+
+stages:
+  - release
+  - deploy
+  - notify
+
+release-helm-charts:
+  stage: release
+  image: alpine/helm:3.12.1
+  script:
+    - helm package dumplings-store-charts --version ${VERSION}
+    - curl -u "${NEXUS_REPO_USER}:${NEXUS_REPO_PASSWORD}" ${NEXUS_REPO_URL_HELM} --upload-file dumplings-store-${VERSION}.tgz
+
+deployment:
+  stage: deploy
+  image: alpine/helm:3.12.1
+  environment:
+    name: ${ENV_NAME}
+    url: https://dumplings-store.skillvrn.ru
+  before_script:
+    - mkdir -p ~/.kube
+    - echo "${KUBE_CONFIG}" | base64 -d > ~/.kube/config
+    - echo "${CLUSTER_CERT}" | base64 -d > ~/.kube/ca.pem
+    - chmod -R 700 ~/.kube
+  script:
+    - export DOCKER_CONFJSON=${DOCKER_CONFJSON}
+    - export IMAGES_REPO_URL=${IMAGES_REPO_URL}
+    - >
+      helm upgrade
+      --atomic
+      --install ${APPLICATION}
+      --namespace ${CLUSTER_NAMESPACE}
+      --set global.dockerconfigjson=$DOCKER_CONFJSON
+      --set registryUrl=$IMAGES_REPO_URL
+      ./helm
+
+telegram-notification:
+  stage: notify
+  script:
+    - 'curl -X POST -H "Content-Type: application/json"
+      -d "{\"chat_id\": \"1236238897\", \"parse_mode\":\"markdown\",
+      \"text\": \"\uD83C\uDD95 Пельменная обновлена! Версия ${VERSION}\n
+      \uD83D\uDD17 [Ссылка на сайт](https://dumplings-store.skillvrn.ru)\"}"
+      https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage'
+  needs:
+    - deployment
