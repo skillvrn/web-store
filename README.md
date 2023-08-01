@@ -729,6 +729,102 @@ helm upgrade --install cert-manager jetstack/cert-manager --namespace dumplings-
 kubectl apply -f k8s-additional/acme-issuer.yaml
 ```
 
+## Деплой приложения
+
+В обычном режиме приложение устанавливается или обновляется автоматически через CI/CD. Для этого создана конфигурация `helm/.gitlab-ci.yaml`.
+
+Переменные, которые можно/необходимо менять:
+
+| Элемент | Значение | Комментарий |
+|--------------|-----------|-----------|
+| `VERSION` | `SemVer` | Версия сборки. Генерируется автоматически. Минорные и мажорные версии меняются вручную в глобальном конфиге CI/CD |
+| `ENV_NAME` | `production` | Название окружения для RollBack в Gitlab CI |
+| `APPLICATION` | `dumplings-store` | Название приложения. Влияет на название деплоймента в Helm |
+| `CLUSTER_NAMESPACE` | `dumplings-store` | Название пространства имен в кластере K8s |
+
+Переменные в проекте Gitlab CI, которые можно или нужно менять:
+
+| Элемент | Значение | Комментарий |
+|--------------|-----------|-----------|
+| `CLUSTER_CERT` | Сертификат для проверки подлинности K8s Cluster в base64 (сменить, если другой кластер) |
+| `DOCKER_CONFJSON` | Конфигурация для подключения к Docker репозиторию в base64 |
+| `IMAGES_REPO_URL` | URL репозитория приложения с Docker-образами |
+| `KUBE_CONFIG` | Конфигурация для подключения к K8s Cluster |
+| `NEXUS_REPO_PASSWORD` | Пароль для доступа к Nexus репозиторию |
+| `NEXUS_REPO_URL_HELM` | URL репозитория Helm-chart'ов деплоя приложения |
+| `NEXUS_REPO_USER` | Имя пользователя для доступа к Nexus репозиторию |
+| `STATIC_IP` | Статический IP адрес Network Load Balancer'а (из terraform) |
+| `TELEGRAM_BOT_TOKEN` | Token Телеграм-бота для уведомлений о событиях в CI/CD |
+
+**Стадии CI/CD**
+
+- Релиз
+    + Helm-chart'ы упаковываются
+    + Помечаются версией в имени архива
+    + Загружаются в Nexus-репозиторий
+
+- Деплоймент
+    + Формируются переменные с секретами
+    + Настраивается окружение для доступа к кластеру и репозиторию
+    + При помощи helm производится установка (обновление)
+
+- Оповещение
+    + Телеграм Бот присылает уведомление об обновлении приложения
+
+**Helm chart'ы приложения**
+
+Глобальные переменные:
+
+| Элемент | Значение | Комментарии |
+|--------------|-----------|-----------|
+| `namespace` | `dumplings-store` | Используется единый namespace |
+| `imagePullPolicy` | `Always` | Всегда скачивать Docker образы |
+| `revisionHistoryLimit` | `15` | Сколько ревизий приложения будет хранить Helm |
+| `strategyType` | `RollingUpdate` | Стратегия обновления |
+| `partOf` | `dumplings-store` |  |
+| `registryUrl` | `****` | Репозиторий Docker-образов |
+| `dockerconfigjson` | `eyJhdXRoIjp7fX0=` | Заглушка, в которой нет чувствительных данных. Заменяется при деплое из переменной CI/CD |
+
+Переменные для backend:
+
+| Элемент | Значение | Комментарии |
+|--------------|-----------|-----------|
+| `image.repository` | `{{ .Values.global.registryUrl }}/dumplings-store-backend` | Формируется динамически |
+| `image.tag` | `SemVer` | Версия Docker образа, который нужно указывать и менять при каждом обновлении приложения. Должно совпадать с dumplings-store-charts/Chart.yaml.dependencies.version backend |
+| `dockerconfigjson` | `{{ .Values.global.dockerconfigjson }}` | Указывается при деплое, формируется динамически для создания Secret'а |
+| `replicas` | `2` | Количество реплик подов |
+| `maxUnavailable` | `1` | Максимальное количество подов, которые будут остановлены при обновлении |
+| `service.port` | `8081` | Порт службы приложения внутри пода |
+
+Переменные для frontend:
+
+| Элемент | Значение | Комментарии |
+|--------------|-----------|-----------|
+| `image.repository` | `{{ .Values.global.registryUrl }}/dumplings-store-frontend` | Формируется динамически |
+| `image.tag` | `SemVer` | Версия Docker образа, который нужно указывать и менять при каждом обновлении приложения. Должно совпадать с dumplings-store-charts/Chart.yaml.dependencies.version frontend |
+| `dockerconfigjson` | `{{ .Values.global.dockerconfigjson }}` | Указывается при деплое, формируется динамически для создания Secret'а |
+| `replicas` | `2` | Количество реплик подов |
+| `service.port` | `8080` | Порт виртуального веб-сервера для фронтенда |
+| `service.backendPort` | `8081` | Порт службы приложения внутри пода бекенда для связки (указывается в configmap) |
+| `fqdn` | `dumplings-store.skillvrn.ru` | QFDN продакшен сайта |
+
+**Backend Helm Chart Templates**
+
+- Создается сервис
+- Секрет с доступом в Docker-репозиторий
+- Деплоймент
+
+**Frontend Helm Chart Templates**
+
+- Создается сервис
+- Секрет с доступом в Docker-репозиторий
+- Ingress для доступа к приложению по https
+
+*Главное особенностью является указание директивы `spec.tls.secretName`, значение которой должно отличаться от других конфигураций Ingress в кластере, чтобы сертификаты от Let's Encrypt удачно создавались.*
+
+- Configmap для деплоймента
+- Деплоймент
+
 ## Мониторинг
 
 ### Prometheus
